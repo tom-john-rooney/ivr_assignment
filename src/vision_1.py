@@ -21,6 +21,7 @@ class computer_vision:
         #self.j4_sub = rospy.Subscriber("/robot/joint4_position_controller/command", Float64, self.callback)
         # initialize the bridge between openCV and ROS
         self.bridge = CvBridge()
+        # Fields to store image 1 and image 2
         self.cv_image1 = None
         self.cv_image2 = None
 
@@ -56,12 +57,14 @@ class computer_vision:
         cY = int(M['m01'] / M['m00'])
         return np.array([cX, cY])
 
+    # Callback for image 1. Reads and stores the image.
     def callback_img1(self, data):
         try:
             self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
 
+    # Callback for image 2. Reads and stores the image.
     def callback_img2(self, data):
         try:
             self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
@@ -69,6 +72,7 @@ class computer_vision:
         except CvBridgeError as e:
             print(e)
 
+    # Displays both images (used to check callbacks were working)
     def show_imgs(self):
         cv2.imshow('img_1', self.cv_image1)
         cv2.imshow('img_2', self.cv_image2)
@@ -79,10 +83,10 @@ class computer_vision:
 if __name__ == '__main__':
     cv = computer_vision()
     try:
+        # Subscribers to the image topics
         rospy.Subscriber("/camera1/robot/image_raw", Image, cv.callback_img1)
         rospy.Subscriber("/camera2/robot/image_raw", Image, cv.callback_img2)
-
-
+        # Keep node from exiting unless shutdown
         rospy.spin()
     except KeyboardInterrupt:
         print("Shutting down...")
