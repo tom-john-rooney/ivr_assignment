@@ -5,17 +5,24 @@ import numpy as np
 import cv2
 from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray, Float64
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 
 class computer_vision:
+
     def __init__(self):
         # initialise node
         rospy.init_node('image_processing', anonymous=True)
         # initialise subscriber to joint 2's angle data topic
-        self.j2_sub = rospy.Subscriber("/robot/joint2_position_controller/command", Float64, self.callback)
+        #self.j2_sub = rospy.Subscriber("/robot/joint2_position_controller/command", Float64, self.callback)
         # initialise subscriber to joint 3's angle data topic
-        self.j3_sub = rospy.Subscriber("/robot/joint3_position_controller/command", Float64, self.callback)
+        #self.j3_sub = rospy.Subscriber("/robot/joint3_position_controller/command", Float64, self.callback)
         # initialise subscriber to joint 4's angle data topic
-        self.j4_sub = rospy.Subscriber("/robot/joint4_position_controller/command", Float64, self.callback)
+        #self.j4_sub = rospy.Subscriber("/robot/joint4_position_controller/command", Float64, self.callback)
+        # initialize the bridge between openCV and ROS
+        self.bridge = CvBridge()
+        self.cv_image1 = None
+        self.cv_image2 = None
 
     # Detect red blobs
     def detect_red(self, img):
@@ -49,17 +56,33 @@ class computer_vision:
         cY = int(M['m01'] / M['m00'])
         return np.array([cX, cY])
 
-    def callback(self,data):
-        print("I heard", data.data)
+    def callback_img1(self, data):
+        try:
+            self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
+        except CvBridgeError as e:
+            print(e)
 
-        # code to manipulate data goes here
+    def callback_img2(self, data):
+        try:
+            self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
+            self.show_imgs()
+        except CvBridgeError as e:
+            print(e)
 
-
+    def show_imgs(self):
+        cv2.imshow('img_1', self.cv_image1)
+        cv2.imshow('img_2', self.cv_image2)
+        cv2.waitKey()
+        cv2.destroyAllWindows()
 
 # run the code if the node is called
 if __name__ == '__main__':
     cv = computer_vision()
     try:
+        rospy.Subscriber("/camera1/robot/image_raw", Image, cv.callback_img1)
+        rospy.Subscriber("/camera2/robot/image_raw", Image, cv.callback_img2)
+
+
         rospy.spin()
     except KeyboardInterrupt:
         print("Shutting down...")
