@@ -17,6 +17,37 @@ class computer_vision:
         # initialise subscriber to joint 4's angle data topic
         self.j4_sub = rospy.Subscriber("/robot/joint4_position_controller/command", Float64, self.callback)
 
+    # Detect red blobs
+    def detect_red(self, img):
+        mask = cv2.inRange(img, (0, 0, 100), (0, 0, 255))
+        M = cv2.moments(mask)
+        cX = int(M['m10'] / M['m00'])
+        cY = int(M['m01'] / M['m00'])
+        return np.array([cX, cY])
+
+    # Detect green blobs
+    def detect_green(self, img):
+        mask = cv2.inRange(img, (0, 100, 0), (0, 255, 0))
+        M = cv2.moments(mask)
+        cX = int(M['m10'] / M['m00'])
+        cY = int(M['m01'] / M['m00'])
+        return np.array([cX, cY])
+
+    # Detect blue blobs
+    def detect_blue(self, img):
+        mask = cv2.inRange(img, (100, 0, 0), (255, 0, 0))
+        M = cv2.moments(mask)
+        cX = int(M['m10'] / M['m00'])
+        cY = int(M['m01'] / M['m00'])
+        return np.array([cX, cY])
+
+    # Detect yellow blobs
+    def detect_yellow(self, img):
+        mask = cv2.inRange(img, (0, 100, 100), (0, 255, 255))
+        M = cv2.moments(mask)
+        cX = int(M['m10'] / M['m00'])
+        cY = int(M['m01'] / M['m00'])
+        return np.array([cX, cY])
 
     def callback(self,data):
         print("I heard", data.data)
