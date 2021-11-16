@@ -8,6 +8,11 @@ from std_msgs.msg import Float64MultiArray, Float64
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 
+# Think of this as an 'enum' of the two planes.
+class planes:
+    XZ_PLANE = "xz"
+    YZ_PLANE = "yz"
+
 class computer_vision:
 
     def __init__(self):
@@ -21,56 +26,104 @@ class computer_vision:
         #self.j4_sub = rospy.Subscriber("/robot/joint4_position_controller/command", Float64, self.callback)
         # initialize the bridge between openCV and ROS
         self.bridge = CvBridge()
-        # Fields to store image 1 and image 2
+        # fields to store image 1 and image 2
         self.cv_image1 = None
         self.cv_image2 = None
 
-    # Detect red blobs
-    def detect_red(self, img):
-        mask = cv2.inRange(img, (0, 0, 100), (0, 0, 255))
+        # dict of of joints documenting their last known positions and colours
+        self.joints = {
+            'joint_2': { 
+                'last_posn': np.array([0.0, 0.0, 0.0]),
+                'colour': 'yellow',
+                },
+            'joint_3': { 
+                'last_posn': np.array([0.0, 0.0, 0.0]),
+                'colour': 'yellow',
+                },
+            'joint_4': { 
+                'last_posn': np.array([0.0, 0.0, 0.0]),
+                'colour': 'blue',
+                }
+            }
+
+        # dict containing colour ranges for each joint in question
+        self.colours = {
+            # joint_2
+            'yellow': {
+                'min': (0, 100, 100),
+                'max': (0, 255, 255),
+            },
+            # joint_3 + joint_4
+            'blue': {
+                'min': (100, 0, 0),
+                'max': (255, 0, 0),
+            }
+        }
+
+    # Method to detect blobs of a joint
+    def detect_joint(self, img, joint, plane):
+        colour = self.joints[joint]['colour']
+        mask = cv2.inRange(img, self.colours[colour]['min'], self.colours[colour]['max'])
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.dilate(mask, kernel, iterations=3)
         M = cv2.moments(mask)
-        cX = int(M['m10'] / M['m00'])
-        cY = int(M['m01'] / M['m00'])
+        try:
+            cX = int(M['m10'] / M['m00'])
+            cY = int(M['m01'] / M['m00'])
+        # Surface area of 0 => blob is hidden.
+        except ZeroDivisionError:
+            # If blob hidden, check what plane we're working in and return its last known position in that plane.
+            if plane == planes.YZ_PLANE:
+                last_posn = self.joints[joint]['last_posn']
+                return np.array([last_posn[1], last_posn[2]])
+            elif plane == planes.XZ_PLANE:
+                last_posn = self.joints[joint]['last_posn']
+                return np.array([last_posn[0], last_posn[2]])
+        
+        # otherwise the joint has been successfully detected and we return its position
         return np.array([cX, cY])
 
-    # Detect green blobs
-    def detect_green(self, img):
-        mask = cv2.inRange(img, (0, 100, 0), (0, 255, 0))
-        M = cv2.moments(mask)
-        cX = int(M['m10'] / M['m00'])
-        cY = int(M['m01'] / M['m00'])
-        return np.array([cX, cY])
+    # Gets a conversion factor from pixels to metres. 
+    def pixel2metres(self, image):
+        yellow_pos = self.detect_colour(image, 'joint_3')
+        blue_pos = self.detect_colour(image, 'joint_4')  
+        img_diff = np.linalg.norm(np.array(blue_pos) - np.array(yellow_pos))
+        # 2.8 metres specified as distance between J2/3 and J4 in doc.
+        return 2.8 / img_diff
 
-    # Detect blue blobs
-    def detect_blue(self, img):
-        mask = cv2.inRange(img, (100, 0, 0), (255, 0, 0))
-        M = cv2.moments(mask)
-        cX = int(M['m10'] / M['m00'])
-        cY = int(M['m01'] / M['m00'])
-        return np.array([cX, cY])
-
-    # Detect yellow blobs
-    def detect_yellow(self, img):
-        mask = cv2.inRange(img, (0, 100, 100), (0, 255, 255))
-        M = cv2.moments(mask)
-        cX = int(M['m10'] / M['m00'])
-        cY = int(M['m01'] / M['m00'])
-        return np.array([cX, cY])
-
-    # Callback for image 1. Reads and stores the image.
+    # Callback for image 1. Reads and stores the image. Handles YZ plane.
     def callback_img1(self, data):
+        plane = planes.YZ_PLANE
         try:
             self.cv_image1 = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
 
-    # Callback for image 2. Reads and stores the image.
+        # joint detection
+        j2_y, j2_z = self.detect_joint(self.cv_image1, 'joint_2', plane)
+        j3_y, j3_z = self.detect_joint(self.cv_image1, 'joint_3', plane)
+        j4_y, j4_z = self.detect_joint(self.cv_image1, 'joint_4', plane)
+
+        # scaling factor
+        a = pixel2metres(self.cv_image1)
+
+        
+    # Callback for image 2. Reads and stores the image. Handles XZ plane.
     def callback_img2(self, data):
+        plane = planes.XZ_PLANE
         try:
             self.cv_image2 = self.bridge.imgmsg_to_cv2(data, "bgr8")
-            self.show_imgs()
+            # self.show_imgs()
         except CvBridgeError as e:
             print(e)
+
+        # joint detection
+        j2_x, j2_z = self.detect_joint(self.cv_image2, 'joint_2', plane)
+        j3_x, j3_z = self.detect_joint(self.cv_image2, 'joint_3', plane)
+        j4_x, j4_z = self.detect_joint(self.cv_image2, 'joint_4', plane)
+
+        # scaling factor
+        a = pixel2metres(self.cv_image2)
 
     # Displays both images (used to check callbacks were working)
     def show_imgs(self):
