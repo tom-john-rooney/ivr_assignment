@@ -43,7 +43,10 @@ class angle_generator:
 
             self.j4_angle.data = joint_angles[2]
             self.j4_angle_pub.publish(self.j4_angle)
-            print("published!")
+            print("published!\n" +
+            "Joint 2: {} rad\n".format(joint_angles[0])+
+            "Joint 3: {} rad\n".format(joint_angles[1])+
+            "Joint 4: {} rad\n".format(joint_angles[2]))
             self.rate.sleep()
 
 # run the code if the node is called
