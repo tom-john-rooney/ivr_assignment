@@ -24,15 +24,17 @@ class angle_generator:
         # get the initial time
         self.time = rospy.get_time()
 
+        self.callback()
+
     def callback(self):
         self.j2_angle = Float64()
         self.j3_angle = Float64()
         self.j4_angle = Float64()
         while not rospy.is_shutdown():
             current_time = rospy.get_time() - self.time
-            joint_angles = math.pi/2 * np.sin(np.array([math.pi/15 * current_time,
-                                                        math.pi/20 * current_time,
-                                                        math.pi/18 * current_time]))
+            joint_angles = np.pi/2 * np.sin(np.array([np.pi/15 * current_time,
+                                                        np.pi/20 * current_time,
+                                                        np.pi/18 * current_time]))
             self.j2_angle.data = joint_angles[0]
             self.j2_angle_pub.publish(self.j2_angle)
 
@@ -41,15 +43,13 @@ class angle_generator:
 
             self.j4_angle.data = joint_angles[2]
             self.j4_angle_pub.publish(self.j4_angle)
-
+            print("published!")
             self.rate.sleep()
-
-
 
 # run the code if the node is called
 if __name__ == '__main__':
+    ag = angle_generator()
     try:
-        ag = angle_generator()
-        ag.callback()
+        rospy.spin()
     except rospy.ROSInterruptException:
         pass
