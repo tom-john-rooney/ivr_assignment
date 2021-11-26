@@ -30,12 +30,16 @@ class computer_vision:
     self.bridge = CvBridge()
 
     self.green_yz = np.array([0.0, 0.0])
+    #self.green_yz = np.array([0.121, 0.170])
     self.yellow_yz = np.array([0.0, 0.0])
+    #self.yellow_yz = np.array([0.121, 0.135])
     self.blue_yz = np.array([0.0, 0.0])
     self.red_yz = np.array([0.0, 0.0])
 
     self.green_xz = np.array([0.0, 0.0])
+    #self.green_xz = np.array([0.127, 0.170])
     self.yellow_xz = np.array([0.0, 0.0])
+    #self.yellow_xz = np.array([0.129, 0.135])
     self.blue_xz = np.array([0.0, 0.0])
     self.red_xz = np.array([0.0, 0.0])
 
@@ -155,14 +159,14 @@ class computer_vision:
       cy = int(M['m01'] / M['m00'])
     except ZeroDivisionError:
       return self.NOT_FOUND
-    return np.array([cx, cy])
-
+    return np.array([cx, cy]) 
+  
   def estimate_joint_angles(self, img_1, img_2):
     a = self.pixel2meter_yz(img_1)
     b = self.pixel2meter_xz(img_2)
 
     green_img1 =  a * self.get_green_yz(img_1)
-    yellow_img1 = a * self.get_yellow_yz(img_1)
+    yellow_img1 =  a *self.get_yellow_yz(img_1)
     blue_img1 = a * self.get_blue_yz(img_1)
     red_img1 = a * self.get_red_yz(img_1)
 
@@ -171,18 +175,23 @@ class computer_vision:
     blue_img2 = b * self.get_blue_xz(img_2)
     red_img2 = b * self.get_red_xz(img_2)
 
-    yb_vec = blue_img2 - yellow_img2
-    j2a = np.arctan2(yb_vec[0], yb_vec[1])
+    yb_vec_img2 = blue_img2 - yellow_img2
+    j2a = np.arctan2(yb_vec_img2[0], yb_vec_img2[1])
     if j2a > (np.pi)/2:
-      a = np.pi -j2a
-      b = (np.pi)/2 -a
-      j2a = (np.pi)/2 -b
-    elif j2a < -(np.pi)/2 :
-      a = np.pi + j2a
-      b = (np.pi)/2 - a
-      j2a = -(np.pi)/2 + b
+      j2a = np.pi - j2a
+    elif j2a < -(np.pi)/2:
+      j2a = -(np.pi + j2a)
 
-    return np.array([j2a])
+    yb_vec_img1 = blue_img1 - yellow_img1
+    j3a = -np.arctan2(yb_vec_img1[0], yb_vec_img1[1])
+    if j3a > (np.pi)/2:
+      j3a = np.pi - j3a
+    elif j3a < -(np.pi)/2:
+      j3a = -(np.pi + j3a)
+
+
+
+    return np.array([j2a,j3a])
 
   def callback(self, data_1, data_2):
     try:
@@ -191,14 +200,29 @@ class computer_vision:
     except CvBridgeError as e:
       print(e)
 
+    #a = self.pixel2meter_yz(self.cv_img1)
+    #b = self.pixel2meter_xz(self.cv_img2)  
+
+    #green_img1 =  a * self.get_green_yz(self.cv_img1)
+    #yellow_img1 = a * self.get_yellow_yz(self.cv_img1)
+
+    #green_img2 = b * self.get_green_xz(self.cv_img2)
+    #yellow_img2 = b * self.get_yellow_xz(self.cv_img2)
+
+    #print("Green y,z = {} {}".format(green_img1[0], green_img1[1]))
+    #print("Green x,z = {} {}\n".format(green_img2[0], green_img2[1]))
+    #print("Yellow y,z = {} {}".format(yellow_img1[0], yellow_img1[1]))
+    #print("Yellow x,z = {} {}\n".format(yellow_img2[0], yellow_img2[1]))
+
+
     joint_angles_msg = Float64MultiArray()
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
     joint_angles_msg.data = est_angles
     
     self.est_angles_pub.publish(joint_angles_msg)
     print("Published estimated angles:\n"+
-    "Joint 2: {} rad\n".format(est_angles[0]))
-    #"Joint 3: {} rad\n".format(est_angles[1]) 
+    "Joint 2: {} rad\n".format(est_angles[0])+
+    "Joint 3: {} rad\n".format(est_angles[1])) 
     #"Joint 4: {} rad\n".format(est_angles[2]))
 
 # call the class
