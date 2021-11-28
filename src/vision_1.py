@@ -147,6 +147,10 @@ class computer_vision:
     dist = np.sum((green_pos - yellow_pos) ** 2)
     return self.GY_LENGTH / dist
 
+  def y_rotn(self, vector, angle):
+    rotation_matrix = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
+    return np.matmul(rotation_matrix, vector)
+
 
   def get_blob_centre(self, img, colour):
     mask = cv2.inRange(img, self.colours[colour]['min'], self.colours[colour]['max'])
@@ -161,6 +165,14 @@ class computer_vision:
       return self.NOT_FOUND
     return np.array([cx, cy]) 
   
+  def vector_length(self, vector):
+    return np.sqrt(np.sum(vector ** 2))
+  
+  def angle_between_vectors(self, vector1, vector2):
+    size_vector1 = self.vector_length(vector1)
+    size_vector2 = self.vector_length(vector2)
+    return np.arccos(np.dot(vector1, vector2) / (size_vector1 * size_vector2))
+
   def estimate_joint_angles(self, img_1, img_2):
     a = self.pixel2meter_yz(img_1)
     b = self.pixel2meter_xz(img_2)
@@ -181,17 +193,28 @@ class computer_vision:
       j2a = np.pi - j2a
     elif j2a < -(np.pi)/2:
       j2a = -(np.pi + j2a)
-
-    yb_vec_img1 = blue_img1 - yellow_img1
-    j3a = -np.arctan2(yb_vec_img1[0], yb_vec_img1[1])
+    
+    three_dim_blue = np.array([blue_img2[0], blue_img1[0], max(blue_img1[1], blue_img2[1])])
+    three_dim_yellow = np.array([yellow_img2[0], yellow_img1[0], max(yellow_img1[1], yellow_img2[1])])
+    three_dim_yb = three_dim_blue - three_dim_yellow
+    three_dim_yb_rot = self.y_rotn(three_dim_yb, -j2a)
+     
+    j3a = -np.arctan2(three_dim_yb_rot[1], three_dim_yb_rot[2])
     if j3a > (np.pi)/2:
       j3a = np.pi - j3a
     elif j3a < -(np.pi)/2:
       j3a = -(np.pi + j3a)
 
+    three_dim_red = np.array([red_img2[0], red_img1[0], max(red_img1[1], red_img2[1])])
+    three_dim_br = three_dim_red - three_dim_blue
+    j4a = self.angle_between_vectors(three_dim_br, three_dim_yb)
 
+    if j4a > (np.pi)/2:
+      j4a = np.pi - j4a
+    elif j4a < -(np.pi)/2:
+      j4a = -(np.pi + j4a)
 
-    return np.array([j2a,j3a])
+    return np.array([j2a,j3a,j4a])
 
   def callback(self, data_1, data_2):
     try:
@@ -222,8 +245,8 @@ class computer_vision:
     self.est_angles_pub.publish(joint_angles_msg)
     print("Published estimated angles:\n"+
     "Joint 2: {} rad\n".format(est_angles[0])+
-    "Joint 3: {} rad\n".format(est_angles[1])) 
-    #"Joint 4: {} rad\n".format(est_angles[2]))
+    "Joint 3: {} rad\n".format(est_angles[1])+
+    "Joint 4: {} rad\n".format(est_angles[2]))
 
 # call the class
 def main(args):
