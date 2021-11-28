@@ -30,16 +30,12 @@ class computer_vision:
     self.bridge = CvBridge()
 
     self.green_yz = np.array([0.0, 0.0])
-    #self.green_yz = np.array([0.121, 0.170])
     self.yellow_yz = np.array([0.0, 0.0])
-    #self.yellow_yz = np.array([0.121, 0.135])
     self.blue_yz = np.array([0.0, 0.0])
     self.red_yz = np.array([0.0, 0.0])
 
     self.green_xz = np.array([0.0, 0.0])
-    #self.green_xz = np.array([0.127, 0.170])
     self.yellow_xz = np.array([0.0, 0.0])
-    #self.yellow_xz = np.array([0.129, 0.135])
     self.blue_xz = np.array([0.0, 0.0])
     self.red_xz = np.array([0.0, 0.0])
 
@@ -222,21 +218,6 @@ class computer_vision:
       self.cv_img2 = self.bridge.imgmsg_to_cv2(data_2, "bgr8")
     except CvBridgeError as e:
       print(e)
-
-    #a = self.pixel2meter_yz(self.cv_img1)
-    #b = self.pixel2meter_xz(self.cv_img2)  
-
-    #green_img1 =  a * self.get_green_yz(self.cv_img1)
-    #yellow_img1 = a * self.get_yellow_yz(self.cv_img1)
-
-    #green_img2 = b * self.get_green_xz(self.cv_img2)
-    #yellow_img2 = b * self.get_yellow_xz(self.cv_img2)
-
-    #print("Green y,z = {} {}".format(green_img1[0], green_img1[1]))
-    #print("Green x,z = {} {}\n".format(green_img2[0], green_img2[1]))
-    #print("Yellow y,z = {} {}".format(yellow_img1[0], yellow_img1[1]))
-    #print("Yellow x,z = {} {}\n".format(yellow_img2[0], yellow_img2[1]))
-
 
     joint_angles_msg = Float64MultiArray()
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
