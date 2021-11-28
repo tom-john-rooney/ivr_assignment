@@ -9,13 +9,13 @@ import cv2
 from std_msgs.msg import String
 from std_msgs.msg import Float64MultiArray, Float64
 
-class angle_generator:
+class angle_generator2:
 
     def __init__(self):
         # initialise node
-        rospy.init_node('angle_generation', anonymous=True)
+        rospy.init_node('angle_generation2', anonymous=True)
         # initialise publisher to send data to topic for joint 2's angle
-        self.j2_angle_pub = rospy.Publisher("/robot/joint2_position_controller/command", Float64, queue_size=10)
+        self.j1_angle_pub = rospy.Publisher("/robot/joint1_position_controller/command", Float64, queue_size=10)
         # initialise publisher to send data to topic for joint 3's angle
         self.j3_angle_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
         # initialise publisher to send data to topic for joint 4's angle
@@ -27,31 +27,32 @@ class angle_generator:
         self.callback()
 
     def callback(self):
-        self.j2_angle = Float64()
+        self.j1_angle = Float64()
         self.j3_angle = Float64()
         self.j4_angle = Float64()
         while not rospy.is_shutdown():
             current_time = rospy.get_time() - self.time
-            joint_angles = np.pi/2 * np.sin(np.array([np.pi/15 * current_time,
-                                                        np.pi/20 * current_time,
-                                                        np.pi/18 * current_time]))
-            self.j2_angle.data = joint_angles[0]
-            self.j2_angle_pub.publish(self.j2_angle)
+            j1a = np.pi * np.sin(np.pi/28 * current_time)
+            j3a = np.pi/2 * np.sin(np.pi/20 * current_time)
+            j4a = np.pi/2 * np.sin(np.pi/18 * current_time)
 
-            self.j3_angle.data = joint_angles[1]
+            self.j1_angle.data = j1a
+            self.j1_angle_pub.publish(self.j1_angle)
+
+            self.j3_angle.data = j3a
             self.j3_angle_pub.publish(self.j3_angle)
 
-            self.j4_angle.data = joint_angles[2]
+            self.j4_angle.data = j4a
             self.j4_angle_pub.publish(self.j4_angle)
             print("published!\n" +
-            "Joint 2: {} rad\n".format(joint_angles[0])+
-            "Joint 3: {} rad\n".format(joint_angles[1])+
-            "Joint 4: {} rad\n".format(joint_angles[2]))
+            "Joint 2: {} rad\n".format(j1a)+
+            "Joint 3: {} rad\n".format(j3a)+
+            "Joint 4: {} rad\n".format(j4a))
             self.rate.sleep()
 
 # run the code if the node is called
 if __name__ == '__main__':
-    ag = angle_generator()
+    ag = angle_generator2()
     try:
         rospy.spin()
     except rospy.ROSInterruptException:
