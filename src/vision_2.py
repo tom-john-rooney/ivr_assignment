@@ -194,8 +194,22 @@ class computer_vision_2:
     elif j3a < -(np.pi)/2:
       j3a = -(np.pi + j3a)
 
+    three_dim_red = np.array([red_img2[0], red_img1[0], max(red_img1[1], red_img2[1])])
+    three_dim_br = three_dim_red - three_dim_blue
+    three_dim_br_rot = self.z_rotn(three_dim_br, -j1a)
 
-    return np.array([j1a, j3a])
+    j4a = self.angle_between_vectors(three_dim_br_rot, three_dim_yb_rot)
+
+    if j4a > (np.pi)/2:
+      j4a = np.pi - j4a
+    elif j4a < -(np.pi)/2:
+      j4a = -(np.pi + j4a)
+    
+    if j4a < 0.5:
+      j4a = j4a - 0.25
+
+    return np.array([j1a, j3a, j4a])
+
 
 
   def callback(self, data_1, data_2):
@@ -212,8 +226,8 @@ class computer_vision_2:
     self.est_angles_pub.publish(joint_angles_msg)
     print("Published estimated angles:\n"+
     "Joint 1: {} rad\n".format(est_angles[0])+
-    "Joint 3: {} rad\n".format(est_angles[1]))
-    #"Joint 4: {} rad\n".format(est_angles[2]))
+    "Joint 3: {} rad\n".format(est_angles[1])+
+    "Joint 4: {} rad\n".format(est_angles[2]))
 
 # call the class
 def main(args):
