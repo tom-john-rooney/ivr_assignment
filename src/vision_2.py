@@ -204,9 +204,7 @@ class computer_vision_2:
       j4a = np.pi - j4a
     elif j4a < -(np.pi)/2:
       j4a = -(np.pi + j4a)
-    
-    if j4a < 0.5:
-      j4a = j4a - 0.25
+
 
     return np.array([j1a, j3a, j4a])
 
