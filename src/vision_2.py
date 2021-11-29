@@ -162,6 +162,10 @@ class computer_vision_2:
     size_vector2 = self.vector_length(vector2)
     return np.arccos(np.dot(vector1, vector2) / (size_vector1 * size_vector2))
 
+  def z_rotn(self, vector, angle):
+    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
+    return np.matmul(rotation_matrix, vector)
+
   def estimate_joint_angles(self, img_1, img_2):
     a = self.pixel2meter_yz(img_1)
     b = self.pixel2meter_xz(img_2)
@@ -180,9 +184,18 @@ class computer_vision_2:
     three_dim_yellow = np.array([yellow_img2[0], yellow_img1[0], max(yellow_img1[1], yellow_img2[1])])
     three_dim_green = np.array([green_img2[0], green_img1[0], max(green_img1[1], green_img2[1])])
     three_dim_yb_vec = three_dim_blue - three_dim_green
+
     j1a = np.arctan2(three_dim_yb_vec[0], -three_dim_yb_vec[1])
 
-    return np.array([j1a])
+    three_dim_yb_rot = self.z_rotn(three_dim_yb_vec, -j1a)
+    j3a = -2 * np.arctan2(three_dim_yb_rot[1], -three_dim_yb_rot[2])
+    if j3a > (np.pi)/2:
+      j3a = np.pi - j3a
+    elif j3a < -(np.pi)/2:
+      j3a = -(np.pi + j3a)
+
+
+    return np.array([j1a, j3a])
 
 
   def callback(self, data_1, data_2):
@@ -198,8 +211,8 @@ class computer_vision_2:
     
     self.est_angles_pub.publish(joint_angles_msg)
     print("Published estimated angles:\n"+
-    "Joint 1: {} rad\n".format(est_angles[0]))
-    #"Joint 3: {} rad\n".format(est_angles[1])+
+    "Joint 1: {} rad\n".format(est_angles[0])+
+    "Joint 3: {} rad\n".format(est_angles[1]))
     #"Joint 4: {} rad\n".format(est_angles[2]))
 
 # call the class
