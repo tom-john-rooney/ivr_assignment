@@ -22,7 +22,9 @@ class computer_vision:
     # subscriber to camera2's topic
     self.cam2_sub = message_filters.Subscriber("/camera2/robot/image_raw", Image)
     # publisher for estimated angles
-    self.est_angles_pub = rospy.Publisher("estimated_joint_angles", Float64MultiArray)
+    self.j2_pub = rospy.Publisher("joint_2_angle", Float64)
+    self.j3_pub = rospy.Publisher("joint_3_angle", Float64)
+    self.j4_pub = rospy.Publisher("joint_4_angle", Float64)
     # synchronise the subscribers
     sync = message_filters.TimeSynchronizer([self.cam1_sub, self.cam2_sub], queue_size=1)
     sync.registerCallback(self.callback)
@@ -219,11 +221,17 @@ class computer_vision:
     except CvBridgeError as e:
       print(e)
 
-    joint_angles_msg = Float64MultiArray()
+    j2_msg = Float64
+    j3_msg = Float64
+    j4_msg = float64
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
-    joint_angles_msg.data = est_angles
+    j2_msg.data = est_angles[0]
+    j3_msg.data = est_angles[1]
+    j4_msg.data = est_angles[2]
     
-    self.est_angles_pub.publish(joint_angles_msg)
+    self.j2_pub.publish(j2_msg)
+    self.j3_pub.publish(j3_msg)
+    self.j4_pub.publish(j4_msg)
     print("Published estimated angles:\n"+
     "Joint 2: {} rad\n".format(est_angles[0])+
     "Joint 3: {} rad\n".format(est_angles[1])+
