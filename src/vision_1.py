@@ -8,8 +8,6 @@ from std_msgs.msg import Float64MultiArray, Float64
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 import message_filters
-import yz
-import xz
 import sys
 
 class computer_vision:
@@ -22,9 +20,9 @@ class computer_vision:
     # subscriber to camera2's topic
     self.cam2_sub = message_filters.Subscriber("/camera2/robot/image_raw", Image)
     # publisher for estimated angles
-    self.j2_pub = rospy.Publisher("joint_2_angle", Float64)
-    self.j3_pub = rospy.Publisher("joint_3_angle", Float64)
-    self.j4_pub = rospy.Publisher("joint_4_angle", Float64)
+    self.j2_pub = rospy.Publisher("joint_2_angle", Float64, queue_size=10)
+    self.j3_pub = rospy.Publisher("joint_3_angle", Float64, queue_size=10)
+    self.j4_pub = rospy.Publisher("joint_4_angle", Float64, queue_size=10)
     # synchronise the subscribers
     sync = message_filters.TimeSynchronizer([self.cam1_sub, self.cam2_sub], queue_size=1)
     sync.registerCallback(self.callback)
@@ -221,9 +219,9 @@ class computer_vision:
     except CvBridgeError as e:
       print(e)
 
-    j2_msg = Float64
-    j3_msg = Float64
-    j4_msg = float64
+    j2_msg = Float64()
+    j3_msg = Float64()
+    j4_msg = Float64()
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
     j2_msg.data = est_angles[0]
     j3_msg.data = est_angles[1]

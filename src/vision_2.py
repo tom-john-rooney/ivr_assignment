@@ -20,9 +20,11 @@ class computer_vision_2:
     # subscriber to camera2's topic
     self.cam2_sub = message_filters.Subscriber("/camera2/robot/image_raw", Image)
     # publisher for estimated angles
-    self.j1_pub = rospy.Publisher("joint_1_angle", Float64)
-    self.j3_pub = rospy.Publisher("joint_3_angle", Float64)
-    self.j4_pub = rospy.Publisher("joint_4_angle", Float64)
+    self.j1_pub = rospy.Publisher("joint_1_angle", Float64, queue_size=10)
+    self.j3_pub = rospy.Publisher("joint_3_angle", Float64, queue_size=10)
+    self.j4_pub = rospy.Publisher("joint_4_angle", Float64, queue_size=10)
+    self.p2m1_pub = rospy.Publisher("pixel_to_meter_1", Float64, queue_size=10)
+    self.p2m2_pub = rospy.Publisher("pixel_to_meter_2", Float64, queue_size=10)
     # synchronise the subscribers
     sync = message_filters.TimeSynchronizer([self.cam1_sub, self.cam2_sub], queue_size=1)
     sync.registerCallback(self.callback)
@@ -182,15 +184,18 @@ class computer_vision_2:
     blue_img2 = b * self.get_blue_xz(img_2)
     red_img2 = b * self.get_red_xz(img_2)
 
+    print("Vision estimated eff pos: {} {} {}".format(round(red_img2[0],3), round(red_img1[0],3), round(max(red_img1[1], red_img2[1]),3)))
+
     three_dim_blue = np.array([blue_img2[0], blue_img1[0], max(blue_img1[1], blue_img2[1])])
     three_dim_yellow = np.array([yellow_img2[0], yellow_img1[0], max(yellow_img1[1], yellow_img2[1])])
     three_dim_green = np.array([green_img2[0], green_img1[0], max(green_img1[1], green_img2[1])])
-    three_dim_yb_vec = three_dim_blue - three_dim_green
+    three_dim_gb_vec = three_dim_blue - three_dim_green
+    three_dim_yb_vec = three_dim_blue - three_dim_yellow
 
-    j1a = np.arctan2(three_dim_yb_vec[0], -three_dim_yb_vec[1])
+    j1a = np.arctan2(three_dim_gb_vec[0], -three_dim_gb_vec[1])
 
     three_dim_yb_rot = self.z_rotn(three_dim_yb_vec, -j1a)
-    j3a = -2 * np.arctan2(three_dim_yb_rot[1], -three_dim_yb_rot[2])
+    j3a = np.arctan2(three_dim_yb_rot[1], -three_dim_yb_rot[2])
     if j3a > (np.pi)/2:
       j3a = np.pi - j3a
     elif j3a < -(np.pi)/2:
@@ -198,9 +203,8 @@ class computer_vision_2:
 
     three_dim_red = np.array([red_img2[0], red_img1[0], max(red_img1[1], red_img2[1])])
     three_dim_br = three_dim_red - three_dim_blue
-    three_dim_br_rot = self.z_rotn(three_dim_br, -j1a)
 
-    j4a = self.angle_between_vectors(three_dim_br_rot, three_dim_yb_rot)
+    j4a = self.angle_between_vectors(three_dim_br, three_dim_yb_vec)
 
     if j4a > (np.pi)/2:
       j4a = np.pi - j4a
@@ -209,8 +213,7 @@ class computer_vision_2:
 
 
     return np.array([j1a, j3a, j4a])
-
-
+    
 
   def callback(self, data_1, data_2):
     try:
@@ -219,9 +222,20 @@ class computer_vision_2:
     except CvBridgeError as e:
       print(e)
 
-    j1_msg = Float64
-    j3_msg = Float64
-    j4_msg = float64
+    a = self.pixel2meter_yz(self.cv_img1)
+    b = self.pixel2meter_xz(self.cv_img2)
+    p2m1_msg = Float64()
+    p2m2_msg = Float64()
+
+    p2m1_msg.data = a
+    p2m2_msg.data = b
+
+    self.p2m1_pub.publish(p2m1_msg)
+    self.p2m2_pub.publish(p2m2_msg)
+
+    j1_msg = Float64()
+    j3_msg = Float64()
+    j4_msg = Float64()
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
     j1_msg.data = est_angles[0]
     j3_msg.data = est_angles[1]
@@ -234,6 +248,8 @@ class computer_vision_2:
     "Joint 1: {} rad\n".format(est_angles[0])+
     "Joint 3: {} rad\n".format(est_angles[1])+
     "Joint 4: {} rad\n".format(est_angles[2]))
+
+
 
 # call the class
 def main(args):
