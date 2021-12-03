@@ -103,7 +103,7 @@ class computer_vision:
     green_pos = self.get_green_yz(img)
     yellow_pos = self.get_yellow_yz(img)
     dist = np.sum((green_pos - yellow_pos) ** 2)
-    return self.GY_LENGTH / dist
+    return self.GY_LENGTH / np.sqrt(dist)
 
   def get_green_xz(self, img):
     blob_pos = self.get_blob_centre(img, 'green')
@@ -141,7 +141,7 @@ class computer_vision:
     green_pos = self.get_green_xz(img)
     yellow_pos = self.get_yellow_xz(img)
     dist = np.sum((green_pos - yellow_pos) ** 2)
-    return self.GY_LENGTH / dist
+    return self.GY_LENGTH / np.sqrt(dist)
 
   def y_rotn(self, vector, angle):
     rotation_matrix = np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])

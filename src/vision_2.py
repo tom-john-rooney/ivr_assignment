@@ -23,8 +23,6 @@ class computer_vision_2:
     self.j1_pub = rospy.Publisher("joint_1_angle", Float64, queue_size=10)
     self.j3_pub = rospy.Publisher("joint_3_angle", Float64, queue_size=10)
     self.j4_pub = rospy.Publisher("joint_4_angle", Float64, queue_size=10)
-    self.p2m1_pub = rospy.Publisher("pixel_to_meter_1", Float64, queue_size=10)
-    self.p2m2_pub = rospy.Publisher("pixel_to_meter_2", Float64, queue_size=10)
     # synchronise the subscribers
     sync = message_filters.TimeSynchronizer([self.cam1_sub, self.cam2_sub], queue_size=1)
     sync.registerCallback(self.callback)
@@ -105,7 +103,7 @@ class computer_vision_2:
     green_pos = self.get_green_yz(img)
     yellow_pos = self.get_yellow_yz(img)
     dist = np.sum((green_pos - yellow_pos) ** 2)
-    return self.GY_LENGTH / dist
+    return self.GY_LENGTH / np.sqrt(dist)
 
   def get_green_xz(self, img):
     blob_pos = self.get_blob_centre(img, 'green')
@@ -143,7 +141,7 @@ class computer_vision_2:
     green_pos = self.get_green_xz(img)
     yellow_pos = self.get_yellow_xz(img)
     dist = np.sum((green_pos - yellow_pos) ** 2)
-    return self.GY_LENGTH / dist
+    return self.GY_LENGTH / np.sqrt(dist)
 
   def get_blob_centre(self, img, colour):
     mask = cv2.inRange(img, self.colours[colour]['min'], self.colours[colour]['max'])
@@ -184,7 +182,10 @@ class computer_vision_2:
     blue_img2 = b * self.get_blue_xz(img_2)
     red_img2 = b * self.get_red_xz(img_2)
 
-    print("Vision estimated eff pos: {} {} {}".format(round(red_img2[0],3), round(red_img1[0],3), round(max(red_img1[1], red_img2[1]),3)))
+    eff_pos_yz = red_img1 - green_img1
+    eff_pos_xz = red_img2 - green_img2
+
+    print("Vision estimated eff pos: {} {} {}".format(round(eff_pos_xz[0],3), round(eff_pos_yz[0],3), round(-1 * max(eff_pos_yz[1], eff_pos_xz[1]),3)))
 
     three_dim_blue = np.array([blue_img2[0], blue_img1[0], max(blue_img1[1], blue_img2[1])])
     three_dim_yellow = np.array([yellow_img2[0], yellow_img1[0], max(yellow_img1[1], yellow_img2[1])])
@@ -196,10 +197,10 @@ class computer_vision_2:
 
     three_dim_yb_rot = self.z_rotn(three_dim_yb_vec, -j1a)
     j3a = np.arctan2(three_dim_yb_rot[1], -three_dim_yb_rot[2])
+    if j3a < 0:
+      j3a = -j3a
     if j3a > (np.pi)/2:
       j3a = np.pi - j3a
-    elif j3a < -(np.pi)/2:
-      j3a = -(np.pi + j3a)
 
     three_dim_red = np.array([red_img2[0], red_img1[0], max(red_img1[1], red_img2[1])])
     three_dim_br = three_dim_red - three_dim_blue
@@ -221,17 +222,6 @@ class computer_vision_2:
       self.cv_img2 = self.bridge.imgmsg_to_cv2(data_2, "bgr8")
     except CvBridgeError as e:
       print(e)
-
-    a = self.pixel2meter_yz(self.cv_img1)
-    b = self.pixel2meter_xz(self.cv_img2)
-    p2m1_msg = Float64()
-    p2m2_msg = Float64()
-
-    p2m1_msg.data = a
-    p2m2_msg.data = b
-
-    self.p2m1_pub.publish(p2m1_msg)
-    self.p2m2_pub.publish(p2m2_msg)
 
     j1_msg = Float64()
     j3_msg = Float64()
