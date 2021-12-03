@@ -23,7 +23,7 @@ class computer_vision_2:
     self.j1_pub = rospy.Publisher("joint_1_angle", Float64, queue_size=10)
     self.j3_pub = rospy.Publisher("joint_3_angle", Float64, queue_size=10)
     self.j4_pub = rospy.Publisher("joint_4_angle", Float64, queue_size=10)
-    self.end_eff_pos_pub = rospy.Publisher("end_eff_pos", Float64MultiArray, queue_size=10)
+    self.end_eff_pos_pub = rospy.Publisher("vision_eff_est", Float64MultiArray)
 
 
     # synchronise the subscribers
@@ -171,7 +171,7 @@ class computer_vision_2:
     rotation_matrix = np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
     return np.matmul(rotation_matrix, vector)
 
-  def detect_end_effector(self,img1,img2):
+  def detect_end_effector(self, img_1, img_2):
     a = self.pixel2meter_yz(img_1)
     b = self.pixel2meter_xz(img_2)
 
@@ -188,8 +188,7 @@ class computer_vision_2:
     eff_pos_yz = red_img1 - green_img1
     eff_pos_xz = red_img2 - green_img2
 
-    eff_pos = np.matrix(eff_pos_xz[0], eff_pos_yz[0],(-1 * max(eff_pos_yz[1], eff_pos_xz[1])))
-    return eff_pos
+    return np.array([eff_pos_xz[0], eff_pos_yz[0],(-1 * max(eff_pos_yz[1], eff_pos_xz[1]))])
 
   def estimate_joint_angles(self, img_1, img_2):
     a = self.pixel2meter_yz(img_1)
@@ -249,17 +248,19 @@ class computer_vision_2:
     j1_msg = Float64()
     j3_msg = Float64()
     j4_msg = Float64()
-    end_eff_pos_msg = Float64MultiArray()
     est_angles = self.estimate_joint_angles(self.cv_img1, self.cv_img2)
     j1_msg.data = est_angles[0]
     j3_msg.data = est_angles[1]
     j4_msg.data = est_angles[2]
-    end_eff_pos_msg.data = self.detect_end_effector(self.cv_img1, self.cv_img2)
+
+    eff_msg = Float64MultiArray()
+    est_eff_pos = self.detect_end_effector(self.cv_img1, self.cv_img2)
+    eff_msg.data = est_eff_pos
 
     self.j1_pub.publish(j1_msg)
     self.j3_pub.publish(j3_msg)
     self.j4_pub.publish(j4_msg)
-    self.end_eff_pos_pub.publish(end_eff_pos_msg)
+    self.end_eff_pos_pub.publish(eff_msg)
 
     print("Published estimated angles:\n"+
     "Joint 1: {} rad\n".format(est_angles[0])+

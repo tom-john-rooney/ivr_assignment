@@ -21,29 +21,25 @@ class control:
       self.j1_sub = rospy.Subscriber("/joint_1_angle", Float64, self.callback1)
       self.j3_sub = rospy.Subscriber("/joint_3_angle", Float64, self.callback3)
       self.j4_sub = rospy.Subscriber("/joint_4_angle", Float64, self.callback4)
-      self.target_pos_sub = rospy.Subscriber('/target_pos', Float64MultiArray, self.callback_traj)
-      self.end_eff_pos_sub = rospy.Subscriber('/end_eff_pos', Float64MultiArray, self.callback_eff_pos)
+      self.end_eff_pos_sub = rospy.Subscriber('/vision_eff_est', Float64MultiArray, self.callback_eff)
+      self.target_pos_sub = rospy.Subscriber('/target_control/target_pos', Float64MultiArray, self.callback_traj)
 
 
 
       # initialize a publisher to send joints' angular position to the robot
       self.robot_joint1_pub = rospy.Publisher("/robot/joint1_position_controller/command", Float64, queue_size=10)
-      self.robot_joint3_pub = rospy.Publisher("/robot/joint3position_controller/command", Float64, queue_size=10)
+      self.robot_joint3_pub = rospy.Publisher("/robot/joint3_position_controller/command", Float64, queue_size=10)
       self.robot_joint4_pub = rospy.Publisher("/robot/joint4_position_controller/command", Float64, queue_size=10)
 
       # initialise angle variables
       self.j1_angle = Float64()
       self.j3_angle = Float64()
       self.j4_angle = Float64()
-      self.target_pos = Float64MultiArray()
-      self.end_eff_pos = Float64MultiArray()
 
-      # record the beginning time
       self.time_trajectory = rospy.get_time()
-
-      # Used for tracking time of steps
       self.time_previous_step = np.array([rospy.get_time()], dtype='float64')
       self.time_previous_step2 = np.array([rospy.get_time()], dtype='float64')
+    
 
       # initialise bridge between openCV and ROS
       self.bridge = CvBridge()
@@ -116,9 +112,9 @@ class control:
       return jacobian_matrix
 
   def control_open(self):
-      curr_time = rospy.get_time()
-      dt = curr_time - self.time_previous_step2
-      self.time_previous_step2 = curr_time
+      current_time = rospy.get_time()
+      dt = cur_time - self.time_previous_step2
+      self.time_previous_step2 = cur_time
       est_angles = np.array([self.j1_angle, self.j3_angle, self.j4_angle])
 
       # Calculating pseudo inverse of Jacobian
@@ -149,13 +145,17 @@ class control:
     "Joint 3: {} rad\n".format(est_angles[1])+
     "Joint 4: {} rad\n".format(est_angles[2]))
 
-  def calback_eff(self,data):
-      self.end_eff_pos = Float64MultiArray()
-      self.end_eff_pos = data
+  def callback_eff(self,data):
+    print("called")
+    self.end_eff_pos = np.array([float(data.data[0]), float(data.data[1]), float(data.data[2])])
+    print("Received eff pos:\n"+
+    "x: {}\n".format(self.end_eff_pos.data[0])+
+    "y: {}\n".format(self.end_eff_pos.data[1])+
+    "z: {}\n".format(self.end_eff_pos.data[2]))
 
-  def calback_traj(self, data):
-      self.end_eff_pos = Float64MultiArray()
-      self.target_pos = data
+  def callback_traj(self, data):
+      self.target_pos = np.array([float(data.data[0]), float(data.data[1]), float(data.data[2])])
+      print("TARGET POS")
       self.callback()
 
   def callback(self):
@@ -168,15 +168,20 @@ class control:
       q_d = self.control_open()
       self.joint1=Float64()
       self.joint1.data = q_d[0]
-      self.joint2=Float64()
-      self.joint2.data = q_d[1]
       self.joint3=Float64()
-      self.joint3.data = q_d[2]
+      self.joint3.data = q_d[1]
+      self.joint4=Float64()
+      self.joint4.data = q_d[2]
+
+      print("\nIK RESULTS:\n"+
+      "Joint 1: {} rad\n".format(q_d[0])+
+      "Joint 3: {} rad\n".format(q_d[1])+
+      "Joint 4: {} rad\n".format(q_d[2]))
 
       try:
           self.robot_joint1_pub.publish(self.joint1)
-          self.robot_joint2_pub.publish(self.joint2)
           self.robot_joint3_pub.publish(self.joint3)
+          self.robot_joint3_pub.publish(self.joint4)
       except CvBridgeError as e:
           print (e)
 
